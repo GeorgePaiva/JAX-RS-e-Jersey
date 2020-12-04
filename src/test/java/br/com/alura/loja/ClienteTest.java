@@ -21,10 +21,15 @@ import br.com.alura.loja.modelo.Produto;
 public class ClienteTest {
 
 	private HttpServer server;
+	private WebTarget target;
+	private Client client;
 
 	@Before
 	public void startServidor() {
 		server = Servidor.inicializaServidor();
+		this.client = ClientBuilder.newClient();
+		this.target = client.target("http://localhost:8080");
+
 	}
 
 	@After
@@ -34,11 +39,6 @@ public class ClienteTest {
 
 	@Test
 	public void testaQueBuscarUmCarrinhoTrazOCarrinhoEsperado() {
-
-		// Client que faz as request para o server
-		Client client = ClientBuilder.newClient();
-		// URI base
-		WebTarget target = client.target("http://localhost:8080");
 		String conteudo = target.path("/carrinhos/1").request().get(String.class);
 		Carrinho carrinho = (Carrinho) new XStream().fromXML(conteudo);
 		Assert.assertEquals("Rua Vergueiro 3185, 8 andar", carrinho.getRua());
@@ -46,19 +46,19 @@ public class ClienteTest {
 	}
 
 	@Test
-    public void testaQueSuportaNovosCarrinhos(){
-        Client client = ClientBuilder.newClient();
-        WebTarget target = client.target("http://localhost:8080");
-        Carrinho carrinho = new Carrinho();
-        carrinho.adiciona(new Produto(314L, "Tablet", 999, 1));
-        carrinho.setRua("Rua Vergueiro");
-        carrinho.setCidade("Sao Paulo");
-        String xml = (String) carrinho.toXML();
+	public void testaQueSuportaNovosCarrinhos() {
+		Carrinho carrinho = new Carrinho();
+		carrinho.adiciona(new Produto(314L, "Microfone", 37, 1));
+		carrinho.setRua("Rua Vergueiro");
+		carrinho.setCidade("Sao Paulo");
+		String xml = (String) carrinho.toXML();
+		Entity<String> entity = Entity.entity(xml, MediaType.APPLICATION_XML);
 
-        Entity<String> entity = Entity.entity(xml, MediaType.APPLICATION_XML);
-
-        Response response = target.path("/carrinhos").request().post(entity);
-        Assert.assertEquals("<status>sucesso</status>", response.readEntity(String.class));
-    }
+		Response response = target.path("/carrinhos").request().post(entity);
+		Assert.assertEquals(201, response.getStatus());
+		String location = response.getHeaderString("Location");
+		String conteudo = client.target(location).request().get(String.class);
+		Assert.assertTrue(conteudo.contains("Microfone"));
+	}
 
 }
